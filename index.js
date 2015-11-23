@@ -17,7 +17,10 @@
     })
   });
 
+  // when loaded, our remote data is stored here
   var data = {};
+
+  // a container for our rendered HTML
   var app = document.getElementById('app');
 
   // do a GET for our JSON data
