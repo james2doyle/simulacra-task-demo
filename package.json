@@ -1,0 +1,23 @@
+{
+  "name": "simulacra-task-demo",
+  "version": "1.0.0",
+  "description": "A small demo app using simulacra.js to make a dynamic list of tasks",
+  "main": "index.html",
+  "dependencies": {
+    "whatwg-fetch": "^0.10.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/james2doyle/simulacra-task-demo.git"
+  },
+  "author": "James Doyle (james2doyle)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/james2doyle/simulacra-task-demo/issues"
+  },
+  "homepage": "https://github.com/james2doyle/simulacra-task-demo#readme"
+}

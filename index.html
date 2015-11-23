@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simulacra</title>
+  <!-- you only need this if you have a shit browser -->
+  <script src="node_modules/whatwg-fetch/fetch.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+  <h2>Super Tasks</h2>
+  <template id="tasks">
+    <h3 class="header"></h3>
+    <ul>
+      <li class="task">
+        <input type="checkbox" class="complete">
+        <input type="text" name="task[]" class="value" value="" placeholder="Enter A Task Name"></li>
+    </ul>
+    <form accept-charset="utf-8" id="addTask">
+      <input type="text" id="newtask" value="" class="new-task" placeholder="">
+      <button type="submit">Add Task</button>
+    </form>
+  </template>
+  <div id="app"></div>
+  <script src="simulacra.js" type="text/javascript" charset="utf-8"></script>
+  <script src="index.js" type="text/javascript" charset="utf-8"></script>
+</body>
+</html>
