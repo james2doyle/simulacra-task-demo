@@ -12,6 +12,7 @@
   var bindings = bind(fragment, {
     header: bind($('.header')),
     tasks: bind($('.task'), {
+      id: bind($('.id')),
       complete: bind($('.complete')),
       value: bind($('.value'))
     })
@@ -56,6 +57,19 @@
       // reset the form
       this.reset();
       return false;
+    });
+    // lazy event delegation
+    container.addEventListener('click', function(event) {
+      if (event.target && event.target.className === 'delete') {
+        var index = parseInt(event.target.parentElement.firstElementChild.value, 10);
+        var arr = data.tasks;
+        arr.forEach(function(item) {
+          if (item.id === index) {
+            delete arr[index];
+          }
+        });
+        data.tasks = arr;
+      }
     });
   }).catch(function(err) {
     console.error(err);

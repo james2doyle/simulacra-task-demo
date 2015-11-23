@@ -11,8 +11,11 @@
     <h3 class="header"></h3>
     <ul>
       <li class="task">
+        <input type="hidden" class="id">
         <input type="checkbox" class="complete">
-        <input type="text" name="task[]" class="value" value="" placeholder="Enter A Task Name"></li>
+        <input type="text" name="task[]" class="value" value="" placeholder="Enter A Task Name">
+        <button type="button" class="delete">X</button>
+      </li>
     </ul>
     <form accept-charset="utf-8" id="addTask">
       <input type="text" id="newtask" value="" class="new-task" placeholder="">

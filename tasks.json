@@ -3,22 +3,27 @@
     "header": "My Task List",
     "tasks": [
       {
+        "id": 0,
         "complete": true,
         "value": "Task 1"
       },
       {
+        "id": 1,
         "complete": true,
         "value": "Task 2"
       },
       {
+        "id": 2,
         "complete": true,
         "value": "Task 3"
       },
       {
+        "id": 3,
         "complete": false,
         "value": "Task 4"
       },
       {
+        "id": 4,
         "complete": false,
         "value": "Task 5"
       }
