@@ -61,13 +61,16 @@
     // lazy event delegation
     container.addEventListener('click', function(event) {
       if (event.target && event.target.className === 'delete') {
+        // grab the hidden field value
         var index = parseInt(event.target.parentElement.firstElementChild.value, 10);
         var arr = data.tasks;
         arr.forEach(function(item) {
+          // we found a match, kill it
           if (item.id === index) {
             delete arr[index];
           }
         });
+        // trigger update
         data.tasks = arr;
       }
     });
