@@ -49,6 +49,7 @@
       var arr = data.tasks;
       // here is the new task to add
       arr.push({
+        id: arr.length,
         complete: false,
         value: field.value
       });
