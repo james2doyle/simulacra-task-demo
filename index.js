@@ -12,11 +12,30 @@
   var bindings = bind(fragment, {
     header: bind($('.header')),
     tasks: bind($('.task'), {
-      id: bind($('.id')),
-      complete: bind($('.complete')),
+      id: bind($('.delete'), bindButton),
+      complete: bind($('.complete'), bindCheckbox),
       value: bind($('.value'))
     })
   });
+
+  function bindButton(node, value, oldValue, index) {
+    node.value = value;
+    node.addEventListener('click', function() {
+      delete data.tasks[this.value];
+      data.tasks = data.tasks;
+    });
+  }
+
+  function bindCheckbox(node, value, oldValue, index) {
+    node.checked = value;
+    node.addEventListener('change', function() {
+      if (this.checked) {
+        this.parentElement.classList.add('complete');
+      } else {
+        this.parentElement.classList.remove('complete');
+      }
+    });
+  }
 
   // when loaded, our remote data is stored here
   var data = {};
@@ -45,35 +64,15 @@
     // grab the form and listen for submits
     container.querySelector('#addTask').addEventListener('submit', function(event) {
       event.preventDefault();
-      // because of the setters and getters we need to copy the array
-      var arr = data.tasks;
-      // here is the new task to add
-      arr.push({
-        id: arr.length,
+      // assign the data, triggering the set method
+      data.tasks = data.tasks.concat({
+        id: data.tasks.length,
         complete: false,
         value: field.value
       });
-      // assign the data, triggering the set method
-      data.tasks = arr;
       // reset the form
       this.reset();
       return false;
-    });
-    // lazy event delegation
-    container.addEventListener('click', function(event) {
-      if (event.target && event.target.className === 'delete') {
-        // grab the hidden field value
-        var index = parseInt(event.target.parentElement.firstElementChild.value, 10);
-        var arr = data.tasks;
-        arr.forEach(function(item) {
-          // we found a match, kill it
-          if (item.id === index) {
-            delete arr[index];
-          }
-        });
-        // trigger update
-        data.tasks = arr;
-      }
     });
   }).catch(function(err) {
     console.error(err);

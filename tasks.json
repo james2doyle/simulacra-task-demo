@@ -4,17 +4,17 @@
     "tasks": [
       {
         "id": 0,
-        "complete": true,
+        "complete": false,
         "value": "Task 1"
       },
       {
         "id": 1,
-        "complete": true,
+        "complete": false,
         "value": "Task 2"
       },
       {
         "id": 2,
-        "complete": true,
+        "complete": false,
         "value": "Task 3"
       },
       {

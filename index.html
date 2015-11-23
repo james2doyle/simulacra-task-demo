@@ -4,6 +4,11 @@
   <title>Simulacra</title>
   <!-- you only need this if you have a shit browser -->
   <script src="node_modules/whatwg-fetch/fetch.js" type="text/javascript" charset="utf-8"></script>
+  <style>
+    .task.complete {
+      opacity: 0.5;
+    }
+  </style>
 </head>
 <body>
   <h2>Super Tasks</h2>
@@ -11,7 +16,6 @@
     <h3 class="header"></h3>
     <ul>
       <li class="task">
-        <input type="hidden" class="id">
         <input type="checkbox" class="complete">
         <input type="text" name="task[]" class="value" value="" placeholder="Enter A Task Name">
         <button type="button" class="delete">X</button>
