@@ -4,11 +4,13 @@
   "description": "A small demo app using simulacra.js to make a dynamic list of tasks",
   "main": "index.html",
   "dependencies": {
+    "simulacra": "^0.14.1",
     "whatwg-fetch": "^0.10.1"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify index.js -o bundle.js"
   },
   "repository": {
     "type": "git",

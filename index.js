@@ -1,5 +1,5 @@
 (function viaFetch() {
-  var bind = window.simulacra;
+  var bind = require('simulacra');
   // load the template as HTML DOM elements
   var fragment = document.getElementById('tasks').content;
 
@@ -21,8 +21,7 @@
   function bindButton(node, value, oldValue, index) {
     node.value = value;
     node.addEventListener('click', function() {
-      delete data.tasks[this.value];
-      data.tasks = data.tasks;
+      data.tasks[this.value] = null;
     });
   }
 
@@ -43,6 +42,19 @@
   // a container for our rendered HTML
   var app = document.getElementById('app');
 
+  function addNewTask(event) {
+    event.preventDefault();
+    // assign the data, triggering the set method
+    data.tasks = data.tasks.concat({
+      id: data.tasks.length,
+      complete: false,
+      value: this.children[0].value
+    });
+    // reset the form
+    this.reset();
+    return false;
+  }
+
   // do a GET for our JSON data
   fetch('tasks.json')
   .then(function(response) {
@@ -62,18 +74,7 @@
     var field = container.querySelector('#newtask');
     field.focus();
     // grab the form and listen for submits
-    container.querySelector('#addTask').addEventListener('submit', function(event) {
-      event.preventDefault();
-      // assign the data, triggering the set method
-      data.tasks = data.tasks.concat({
-        id: data.tasks.length,
-        complete: false,
-        value: field.value
-      });
-      // reset the form
-      this.reset();
-      return false;
-    });
+    container.querySelector('#addTask').addEventListener('submit', addNewTask);
   }).catch(function(err) {
     console.error(err);
   });

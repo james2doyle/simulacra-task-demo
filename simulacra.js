@@ -1,6 +1,7 @@
 /*!
  * Simulacra.js
- * Version 0.0.6
+ * Version 0.3.3
+ * MIT License
  * https://github.com/0x8890/simulacra
  */
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
@@ -10,29 +11,27 @@ var processNodes = require('./process_nodes')
 
 module.exports = defineProperties
 
+
 /**
  * Define getters & setters. This function does most of the heavy lifting.
  *
  * @param {Object} obj
  * @param {Object} def
+ * @param {Node} parentNode
  */
-function defineProperties (obj, def) {
+function defineProperties (obj, def, parentNode) {
   // Using the closure here to store private object.
   var store = {}
 
-  var keys = Object.keys(obj)
-  var i, j, key
+  var properties = Object.keys(def)
+  var i, j
 
-  for (i = 0, j = keys.length; i < j; i++) {
-    key = keys[i]
-    store[key] = obj[key]
-    define(key)
-  }
+  for (i = 0, j = properties.length; i < j; i++) define(properties[i])
 
   function define (key) {
+    var initialValue = obj[key]
     var branch = def[key]
-    var mount = branch.mount
-    var unmount = branch.unmount
+    var mutator = branch.mutator
     var definition = branch.definition
 
     // Keeping state in this closure.
@@ -44,61 +43,220 @@ function defineProperties (obj, def) {
     })
 
     // For initialization, call this once.
-    setter(store[key])
+    setter(initialValue)
 
     function getter () {
       return store[key]
     }
 
     function setter (x) {
-      var values = Array.isArray(x) ? x : [ x ]
-      var i, j, isEmpty, value, previousValue,
-        node, activeNode, parentNode
+      var i, j
+
+      // Special case for binding same node as parent.
+      if (branch.__isBoundToParent) {
+        if (mutator) mutator(parentNode, x, store[key])
+        else if (definition) defineProperties(x, definition, parentNode)
+        store[key] = x
+        return null
+      }
 
       store[key] = x
 
-      // Handle rendering to the DOM.
-      j = Math.max(previousValues.length, values.length)
+      if (!Array.isArray(x)) x = [ x ]
 
-      for (i = 0; i < j; i++) {
-        value = values[i]
-        activeNode = activeNodes[i]
-        previousValue = previousValues[i]
-        isEmpty = value === null || value === void 0
-        parentNode = branch.marker.parentNode
+      // Assign custom mutator methods on the array instance.
+      else if (!x.__hasMutators) {
+        x.__hasMutators = true
 
-        if (isEmpty) {
-          delete previousValues[i]
-          delete activeNodes[i]
-          if (unmount) unmount(activeNode, value, previousValue, i)
-          if (activeNode) parentNode.removeChild(activeNode)
-          continue
-        }
+        // These mutators preserve length.
+        x.reverse = reverse
+        x.sort = sort
+        x.copyWithin = copyWithin
+        x.fill = fill
 
-        if (previousValue === value) continue
+        // These mutators may alter length.
+        x.pop = pop
+        x.push = push
+        x.shift = shift
+        x.unshift = unshift
+        x.splice = splice
 
-        previousValues[i] = value
-
-        if (unmount) unmount(activeNode, value, previousValue, i)
-        if (activeNode) parentNode.removeChild(activeNode)
-
-        if (mount) {
-          node = branch.node.cloneNode(true)
-          node = mount(node, value, previousValue, i) || node
-          activeNodes[i] = parentNode.insertBefore(node, branch.marker)
-          continue
-        }
-
-        if (definition) {
-          node = processNodes(branch.node.cloneNode(true), definition)
-          defineProperties(value, definition)
-          activeNodes[i] = parentNode.insertBefore(node, branch.marker)
-          continue
-        }
+        // Handle array index assignment.
+        for (i = 0, j = x.length; i < j; i++) defineIndex(x, i)
       }
 
-      // Reset length to current values.
-      previousValues.length = activeNodes.length = values.length
+      // Handle rendering to the DOM.
+      for (i = 0, j = Math.max(previousValues.length, x.length); i < j; i++)
+        checkValue(x, i)
+
+      // Reset length to current values, implicitly deleting indices from
+      // `previousValues` and `activeNodes` and allowing for garbage
+      // collection.
+      previousValues.length = activeNodes.length = x.length
+
+      return store[key]
+    }
+
+    function checkValue (array, i) {
+      var value = array[i]
+      var previousValue = previousValues[i]
+
+      if (previousValue === value) return
+
+      addNode(value, previousValue, i)
+    }
+
+    function defineIndex (array, i) {
+      var value = array[i]
+
+      Object.defineProperty(array, i, {
+        get: function () { return value },
+        set: function (x) { value = x; checkValue(array, i) },
+        enumerable: true, configurable: true
+      })
+    }
+
+    function removeNode (value, previousValue, i) {
+      var activeNode = activeNodes[i]
+
+      // Cast previous value to null if undefined.
+      if (previousValue === void 0) previousValue = null
+
+      delete previousValues[i]
+
+      if (activeNode) {
+        mutator(activeNode, null, previousValue, i)
+        branch.marker.parentNode.removeChild(activeNode)
+        delete activeNodes[i]
+      }
+    }
+
+    function addNode (value, previousValue, i) {
+      var j, k, node, nextNode, activeNode = activeNodes[i]
+
+      // Cast previous value to null if undefined.
+      if (previousValue === void 0) previousValue = null
+
+      // If value is undefined or null, just remove it.
+      if (value == null) return removeNode(null, previousValue, i)
+
+      previousValues[i] = value
+
+      if (mutator) {
+        if (activeNode) {
+          mutator(activeNode, value, previousValue, i)
+          return null
+        }
+
+        node = branch.node.cloneNode(true)
+        mutator(node, value, previousValue, i)
+      }
+
+      else if (definition) {
+        node = processNodes(branch.node.cloneNode(true), definition, i)
+        defineProperties(value, definition, node)
+      }
+
+      // Find the next node.
+      for (j = i + 1, k = activeNodes.length; j < k; j++)
+        if (activeNodes[j]) {
+          nextNode = activeNodes[j]
+          break
+        }
+
+      activeNodes[i] = branch.marker.parentNode.insertBefore(
+        node, nextNode || branch.marker)
+    }
+
+
+    // =======================================
+    // Below are array mutator methods.
+    // They have to exist within this closure.
+    // =======================================
+
+    function reverse () {
+      return setter(Array.prototype.reverse.call(this))
+    }
+
+    function sort (fn) {
+      return setter(Array.prototype.sort.call(this, fn))
+    }
+
+    function fill (a, b, c) {
+      return setter(Array.prototype.fill.call(this, a, b, c))
+    }
+
+    function copyWithin (a, b, c) {
+      return setter(Array.prototype.copyWithin.call(this, a, b, c))
+    }
+
+    function pop () {
+      var i = this.length - 1
+      var previousValue = previousValues[i]
+      var value = Array.prototype.pop.call(this)
+
+      removeNode(null, previousValue, i)
+      previousValues.length = activeNodes.length = this.length
+
+      return value
+    }
+
+    function push () {
+      var i = this.length, j
+      var value = Array.prototype.push.apply(this, arguments)
+
+      for (j = i + arguments.length; i < j; i++) {
+        addNode(this[i], null, i)
+        defineIndex(this, i)
+      }
+
+      return value
+    }
+
+    function shift () {
+      removeNode(null, previousValues[0], 0)
+
+      Array.prototype.shift.call(previousValues)
+      Array.prototype.shift.call(activeNodes)
+      return Array.prototype.shift.call(this)
+    }
+
+    function unshift () {
+      var i = this.length, j, value
+
+      Array.prototype.unshift.apply(previousValues, arguments)
+      Array.prototype.unshift.apply(activeNodes, Array(arguments.length))
+      value = Array.prototype.unshift.apply(this, arguments)
+
+      for (j = arguments.length; j--;) addNode(arguments[j], null, j)
+      for (j = i + arguments.length; i < j; i++) defineIndex(this, i)
+
+      return value
+    }
+
+    function splice (start, count) {
+      var args = Array.prototype.slice.call(arguments, 2)
+      var i, j, k = args.length - count, value
+
+      for (i = start, j = start + count; i < j; i++)
+        removeNode(null, previousValues[i], i)
+
+      Array.prototype.splice.apply(previousValues, arguments)
+      Array.prototype.splice.apply(activeNodes,
+        [ start, count ].concat(Array(args.length)))
+      value = Array.prototype.splice.apply(this, arguments)
+
+      for (i = start + args.length - 1, j = start; i >= j; i--)
+        addNode(args[(i - start) | 0], null, i)
+
+      if (k < 0)
+        previousValues.length = activeNodes.length = this.length
+
+      else if (k > 0)
+        for (i = this.length - k, j = this.length; i < j; i++)
+          defineIndex(this, i)
+
+      return value
     }
   }
 }
@@ -151,14 +309,13 @@ module.exports = simulacra
  *
  * @param {Node|Object}
  * @param {Function|Object}
- * @param {Function}
  */
-function simulacra (a, b, c) {
-  if (a instanceof Node) return define(a, b, c)
+function simulacra (a, b) {
+  if (a instanceof Node) return define(a, b)
   if (typeof a === 'object') return bind(a, b)
 
   throw new TypeError('First argument must be either ' +
-    'an DOM Node or an Object.')
+    'a DOM Node or an Object.')
 }
 
 
@@ -167,44 +324,50 @@ function simulacra (a, b, c) {
  *
  * @param {String|Node}
  * @param {Function|Object}
- * @param {Function}
  */
-function define (node, def, unmount) {
+function define (node, def) {
   // Memoize the selected node.
   var obj = { node: node }
 
   // Although WeakSet would work here, WeakMap has better browser support.
   var seen = new WeakMap()
 
-  var i, j, keys, value
+  var i, j, keys, branch, boundNode
 
-  if (typeof def === 'function') {
-    obj.mount = def
-    if (typeof unmount === 'function') obj.unmount = unmount
-  }
+  if (typeof def === 'function')
+    obj.mutator = def
 
   else if (typeof def === 'object') {
     obj.definition = def
 
     for (i = 0, keys = Object.keys(def), j = keys.length; i < j; i++) {
-      value = def[keys[i]].node
-      if (!node.contains(value))
-        throw new Error('The bound DOM Node must be ' +
-          'contained in its parent.')
-      if (!seen.get(value)) seen.set(value, true)
-      else throw new Error('Can not bind multiple keys to the same ' +
-        'DOM Node. Collision found on "' + keys[i] + '".')
+      branch = def[keys[i]]
+      boundNode = branch.node
+
+      // Special case for binding to parent node.
+      if (node === boundNode) {
+        branch.__isBoundToParent = true
+        if (branch.mutator && branch.mutator.__isDefault)
+          branch.mutator = noop(keys[i])
+        continue
+      }
+
+      if (!node.contains(boundNode))
+        throw new Error('The bound DOM Node must be either ' +
+          'contained in or equal to its parent binding.')
+
+      if (!seen.get(boundNode)) seen.set(boundNode, true)
+      else throw new Error('Can not bind multiple keys to the same child ' +
+        'DOM Node. Collision found on key "' + keys[i] + '".')
     }
   }
 
-  else if (def === void 0) {
-    if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
+  else if (def === void 0)
+    if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT')
       if (node.type === 'checkbox' || node.type === 'radio')
-        obj.mount = replaceChecked
-      else obj.mount = replaceValue
-    }
-    else obj.mount = replaceText
-  }
+        obj.mutator = replaceChecked
+      else obj.mutator = replaceValue
+    else obj.mutator = replaceText
 
   else throw new TypeError('Second argument must be either ' +
     'a function or an object.')
@@ -233,24 +396,26 @@ function bind (obj, def) {
     throw new TypeError('Top-level binding must be an object.')
 
   node = processNodes(def.node.cloneNode(true), def.definition)
-  defineProperties(obj, def.definition)
+  defineProperties(obj, def.definition, node)
 
   return node
 }
 
 
-function replaceText (node, value) {
-  node.textContent = value
-}
+// Default DOM mutation functions.
+function replaceText (node, value) { node.textContent = value }
+function replaceValue (node, value) { node.value = value }
+function replaceChecked (node, value) { node.checked = value }
 
+replaceText.__isDefault = true
+replaceValue.__isDefault = true
+replaceChecked.__isDefault = true
 
-function replaceValue (node, value) {
-  node.value = value
-}
-
-
-function replaceChecked (node, value) {
-  node.checked = value
+function noop (key) {
+  return function () {
+    console.warn( // eslint-disable-line
+      'Undefined mutator function for key "' + key + '".')
+  }
 }
 
 },{"./define_properties":1,"./process_nodes":4}],4:[function(require,module,exports){
@@ -276,6 +441,7 @@ function processNodes (node, def) {
   for (i = 0, j = keys.length; i < j; i++) {
     key = keys[i]
     branch = def[key]
+    if (branch.__isBoundToParent) continue
     mirrorNode = map.get(branch.node)
     parent = mirrorNode.parentNode
     marker = document.createTextNode('')
